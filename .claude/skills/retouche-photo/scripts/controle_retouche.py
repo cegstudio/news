@@ -120,23 +120,34 @@ def _qualite_jpeg(im: Image.Image):
         return None
 
 
-def _vers_srgb(rgb8: np.ndarray, icc: bytes | None, mode: str = "RGB"):
-    """Convertit vers sRGB si un autre profil est incorporé. Retourne (image, nom du profil, converti ?)."""
+def _vers_srgb(image, icc: bytes | None):
+    """Convertit vers sRGB si un autre profil est incorporé.
+
+    `image` est un tableau RVB 8 bits ou une image Pillow (CMJN compris).
+    Retourne (tableau sRGB, nom du profil, converti ?, part des pixels hors gamut sRGB en %).
+    """
+    pil = image if isinstance(image, Image.Image) else Image.fromarray(image)
+    rgb = lambda: np.asarray(pil.convert("RGB")).copy()  # noqa: E731
     if not icc:
-        return rgb8, None, False
+        return rgb(), None, False, None
     try:
         src = ImageCms.ImageCmsProfile(io.BytesIO(icc))
         nom = (ImageCms.getProfileDescription(src) or "").strip() or "profil sans nom"
-        if "srgb" in nom.lower() and mode == "RGB":
-            return rgb8, nom, False
+        if "srgb" in nom.lower() and pil.mode == "RGB":
+            return rgb(), nom, False, None
         dst = ImageCms.createProfile("sRGB")
-        pil = Image.fromarray(rgb8, mode)
-        out = ImageCms.profileToProfile(
-            pil, src, dst, renderingIntent=ImageCms.Intent.RELATIVE_COLORIMETRIC, outputMode="RGB"
-        )
-        return np.asarray(out).copy(), nom, True
+        intent = ImageCms.Intent.RELATIVE_COLORIMETRIC
+        out = ImageCms.profileToProfile(pil, src, dst, renderingIntent=intent, outputMode="RGB")
+        hors = None
+        if pil.mode == "RGB":
+            # aller-retour : une couleur que le sRGB contient revient à sa valeur ; une couleur hors gamut, non
+            retour = ImageCms.profileToProfile(out, dst, src, renderingIntent=intent, outputMode="RGB")
+            a, b = np.asarray(pil).astype(np.int16), np.asarray(retour).astype(np.int16)
+            ecart = np.abs(a - b).max(axis=2)
+            hors = round(float(((ecart > 8) & (a.max(axis=2) > 12)).mean()) * 100, 3)
+        return np.asarray(out).copy(), nom, True, hors
     except Exception as e:  # profil illisible : on analyse tel quel et on le dit
-        return rgb8 if mode == "RGB" else np.asarray(Image.fromarray(rgb8, mode).convert("RGB")), f"profil illisible ({e})", False
+        return rgb(), f"profil illisible ({e})", False, None
 
 
 def charger(chemin: str | Path) -> dict:
@@ -210,8 +221,7 @@ def charger(chemin: str | Path) -> dict:
                     infos["remarques"].append("Transparence aplatie sur blanc pour l'analyse.")
                 if im2.mode == "CMYK":
                     infos["remarques"].append("Fichier CMJN : converti en sRGB pour l'analyse, les mesures d'écrêtage ne valent que pour cette conversion.")
-                    cmyk = np.asarray(im2)
-                    rgb8, nom, _ = _vers_srgb(cmyk, icc, "CMYK") if icc else (np.asarray(im2.convert("RGB")), None, False)
+                    rgb8, nom, _, _ = _vers_srgb(im2, icc)
                     infos["profil"] = nom
                     return _finir(chemin, infos, rgb8, rgb8, deja_srgb=True)
                 if im2.mode != "RGB":
@@ -229,14 +239,11 @@ def charger(chemin: str | Path) -> dict:
 
 def _finir(chemin, infos, natif, rgb8, icc=None, deja_srgb=False):
     if not deja_srgb:
-        srgb8, nom, converti = _vers_srgb(rgb8, icc)
+        srgb8, nom, converti, hors = _vers_srgb(rgb8, icc)
         infos["profil"] = nom
         infos["converti_vers_srgb"] = converti
-        if converti:
-            # ce que la conversion écrête : approximation de ce qui sort du gamut sRGB
-            avant = np.any((rgb8 <= 0) | (rgb8 >= 255), axis=2)
-            apres = np.any((srgb8 <= 0) | (srgb8 >= 255), axis=2)
-            infos["hors_gamut_srgb_pct"] = round(float(np.mean(apres & ~avant)) * 100, 3)
+        if hors is not None:
+            infos["hors_gamut_srgb_pct"] = hors
     else:
         srgb8 = rgb8
     h, w = srgb8.shape[:2]
@@ -684,16 +691,31 @@ def mesurer_banding(srgb8: np.ndarray, natif: np.ndarray, grille: Grille, al: Al
     return m, carte
 
 
-def mesurer_bruit(y: np.ndarray, lab_L_plein: np.ndarray | None = None) -> tuple[float, np.ndarray]:
-    """Grain au pixel (méthode d'Immerkær), estimé dans les zones sans contour. Retourne (sigma, carte |laplacien|)."""
+def mesurer_bruit(y: np.ndarray, lab_L_plein: np.ndarray | None = None) -> tuple[float, np.ndarray, np.ndarray]:
+    """Grain au pixel (méthode d'Immerkær). Retourne (sigma, carte |laplacien|, masque des zones sans contour).
+
+    Les zones « calmes » sont choisies sur l'image lissée, donc sur sa structure et non sur son grain, et le grain de
+    l'image est la médiane de ce qu'on mesure bloc par bloc : sinon une plage floutée par la retouche passe pour la
+    zone de référence et le grain est sous-estimé.
+    """
     noyau = np.array([[1, -2, 1], [-2, 4, -2], [1, -2, 1]], np.float32)
     lap = np.abs(cv2.filter2D(y, cv2.CV_32F, noyau, borderType=cv2.BORDER_REFLECT))
-    gx = cv2.Sobel(y, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(y, cv2.CV_32F, 0, 1, ksize=3)
-    mag = flou(np.hypot(gx, gy), 2.0)
+    yl = flou(y, 3.0)
+    mag = np.hypot(cv2.Sobel(yl, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(yl, cv2.CV_32F, 0, 1, ksize=3))
     calme = mag <= np.percentile(mag[::4, ::4], 50)
-    sigma = float(math.sqrt(math.pi / 2) * lap[calme].mean() / 6.0) if calme.any() else float("nan")
-    return sigma, lap
+    sig, _, ok = grain_par_blocs(lap, calme, y)
+    return (float(np.median(sig[ok])) if ok.sum() >= 8 else float("nan")), lap, calme
+
+
+def grain_par_blocs(lap: np.ndarray, masque: np.ndarray, y: np.ndarray, bloc: int = 64):
+    """Grain mesuré bloc par bloc dans un masque. Retourne (sigma par bloc, luminance par bloc, blocs valides)."""
+    h, w = lap.shape
+    taille = (max(1, w // bloc), max(1, h // bloc))
+    m = masque.astype(np.float32)
+    num = cv2.resize(lap * m, taille, interpolation=cv2.INTER_AREA)
+    den = cv2.resize(m, taille, interpolation=cv2.INTER_AREA)
+    sig = math.sqrt(math.pi / 2) * num / np.maximum(den, 1e-3) / 6.0
+    return sig, cv2.resize(y, taille, interpolation=cv2.INTER_AREA), den > 0.5
 
 
 def mesurer_halos(y: np.ndarray, al: Alertes, graine: int = 7) -> dict:
@@ -994,17 +1016,29 @@ def mesurer_peau(ctx: dict, al: Alertes, largeur_visage_forcee: float | None) ->
         al.seuil("peau_zones_lissees_pct", part_lisse, "PEAU_LISSAGE_LOCAL",
                  "Des plages de peau sont nettement plus lisses que le reste : trace de flou local, de tampon étalé ou de correcteur. "
                  "La texture doit être continue d'une zone à l'autre.", ", ".join(zones_lisses) or None, " %")
-        # grain de la peau contre grain du reste de l'image
-        if ctx.get("sigma_bruit") and ctx["sigma_bruit"] == ctx["sigma_bruit"] and ctx["sigma_bruit"] > 0.05:
-            lap = ctx["lap"][y0:y1, x0:x1]
-            sp = float(math.sqrt(math.pi / 2) * np.median(lap[mp]) / 6.0 * 1.25)  # médiane → moyenne approx.
-            ratio = sp / ctx["sigma_bruit"]
+        # grain de la peau contre grain du reste de l'image : blocs hors peau, sans contour, de luminosité comparable.
+        # On prend le haut de la distribution (3e quartile) : le grain de l'image est celui des zones que la retouche
+        # n'a pas touchées, et une plage floutée ailleurs ne doit pas servir d'étalon.
+        peau_pleine = cv2.resize(cv2.dilate(peau_r.astype(np.uint8), np.ones((7, 7), np.uint8)),
+                                 (srgb8.shape[1], srgb8.shape[0]), interpolation=cv2.INTER_NEAREST) > 0
+        y_plein = luma(srgb8)
+        sig_b, lum_b, ok_b = grain_par_blocs(ctx["lap"], ctx["calme"] & ~peau_pleine, y_plein)
+        lo, hi = np.percentile(yb[mp], [25, 75])
+        comparables = ok_b & (lum_b >= lo - 12) & (lum_b <= hi + 12)
+        if comparables.sum() < 12:
+            comparables = ok_b
+        s_reste = float(np.percentile(sig_b[comparables], 75)) if comparables.sum() >= 8 else float("nan")
+        s_peau = float(math.sqrt(math.pi / 2) * ctx["lap"][y0:y1, x0:x1][mp].mean() / 6.0)
+        if s_reste == s_reste and s_reste > 0.05:
+            ratio = s_peau / s_reste
+            tex["grain_peau"] = round(s_peau, 2)
+            tex["grain_reste"] = round(s_reste, 2)
             tex["grain_peau_sur_reste"] = round(ratio, 2)
             # seul ce sens est un défaut : une peau a naturellement plus de détail fin qu'un fond flou
-            if ctx["sigma_bruit"] > 0.6 and ratio < 1 / al.r["grain_ecart"]["mineur"]:
+            if s_reste > 0.6 and ratio < 1 / al.r["grain_ecart"]["mineur"]:
                 al.ajouter("GRAIN_INCOHERENT", "majeur" if ratio < 1 / al.r["grain_ecart"]["majeur"] else "mineur",
-                           "La peau est beaucoup plus lisse au pixel que le reste de l'image : le grain doit être le même partout, "
-                           "sinon la retouche se voit. Finir par un grain commun.",
+                           f"La peau est {1 / ratio:.1f} fois plus lisse au pixel que le reste de l'image (σ {s_peau:.1f} contre {s_reste:.1f}) : "
+                           "le grain doit être le même partout, sinon la retouche se voit. Finir par un grain commun.",
                            valeur=round(ratio, 2), repere=f"≥ {1 / al.r['grain_ecart']['mineur']:.2f}")
         # avant / après
         av = ctx.get("avant_srgb8")
@@ -1518,6 +1552,65 @@ def choisir_tuiles(ctx: dict, demande: str, al: Alertes) -> list[str]:
     return sorted((g.nom(int(i % g.nc), int(i // g.nc)) for i in ordre), key=lambda s: (int("".join(ch for ch in s if ch.isdigit())), s))
 
 
+def sortir_tuiles(srgb8: np.ndarray, avant8: np.ndarray | None, grille: Grille, noms: list[str], zoom: int, dossier: Path,
+                  largeur_visage: float | None) -> list[dict]:
+    """Écrit les tuiles à 100 % (ou zoomées) des cellules demandées. `largeur_visage` renseignée = image avec peau."""
+    peau = largeur_visage is not None
+    s2 = echelles_texture(largeur_visage)[1] if peau else 2.5
+    sorties = []
+    for nom in noms:
+        c, l = grille.depuis_nom(nom)
+        x0, y0, x1, y1 = grille.boite(c, l)
+        sous = [("", x0, y0, x1, y1)]
+        if zoom > 1:
+            mx, my = (x0 + x1) // 2, (y0 + y1) // 2
+            sous = [("a", x0, y0, mx, my), ("b", mx, y0, x1, my), ("c", x0, my, mx, y1), ("d", mx, my, x1, y1)]
+        for suf, a0, b0, a1, b1 in sous:
+            if a1 - a0 < 8 or b1 - b0 < 8:
+                continue
+            bloc = srgb8[b0:b1, a0:a1]
+
+            def z(x):
+                return x if zoom == 1 else cv2.resize(x, None, fx=zoom, fy=zoom, interpolation=cv2.INTER_CUBIC)
+
+            if avant8 is not None:
+                image = cote_a_cote(z(avant8[b0:b1, a0:a1]), z(bloc), f"{nom}{suf} avant", f"{nom}{suf} après")
+            else:
+                image = etiqueter(z(bloc), f"{nom}{suf}  {zoom * 100} %")
+            ecrire(image, dossier / f"{nom}{suf}.png")
+            if peau:   # sur la peau, c'est la densité qu'on lit ; sur un produit, les poussières et les dégradés
+                gauche, titre = vue_luminance(bloc), "luminance contrastée"
+            else:
+                gauche, titre = vue_solarisation(bloc), "solarisation"
+            ctrl = cote_a_cote(z(gauche), z(vue_texture(bloc, 0.0, s2, 5.0)), f"{nom}{suf} {titre}", f"{nom}{suf} passe-haut")
+            ecrire(ctrl, dossier / f"{nom}{suf}_controle.png")
+            sorties.append({"cellule": f"{nom}{suf}", "fichier": f"tuiles/{nom}{suf}.png", "controle": f"tuiles/{nom}{suf}_controle.png",
+                            "boite_px": [int(a0), int(b0), int(a1), int(b1)], "zoom": zoom})
+    return sorties
+
+
+def tuiles_seules(final: str | Path, avant: str | Path | None, sortie: str | Path | None, tuiles: str, taille_tuile: int,
+                  zoom: int, peau: bool, largeur_visage: float | None) -> list[dict]:
+    """Complément : écrit seulement des tuiles dans le dossier de contrôle, sans refaire les mesures ni toucher au rapport."""
+    final = Path(final)
+    img = charger(final)
+    srgb8 = img["srgb8"]
+    grille = Grille(srgb8.shape[1], srgb8.shape[0], taille_tuile)
+    avant8 = None
+    if avant:
+        avant8, _ = aligner_avant(charger(avant)["srgb8"], srgb8.shape)
+    if tuiles.strip().lower() in ("toutes", "tout", "all"):
+        noms = [grille.nom(c, l) for l in range(grille.nl) for c in range(grille.nc)]
+    else:
+        noms = [grille.nom(*grille.depuis_nom(n)) for n in tuiles.replace(";", ",").split(",") if n.strip()]
+    sortie = Path(sortie) if sortie else final.with_name(final.stem + "_controle")
+    lv = None
+    if peau:
+        vis = detecter_visages(srgb8)
+        lv = largeur_visage or (vis[0]["w"] if vis else max(srgb8.shape[:2]) * 0.15)
+    return sortir_tuiles(srgb8, avant8, grille, noms, zoom, sortie / "tuiles", lv)
+
+
 def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "auto", masques: dict | None = None,
              sortie: str | Path | None = None, tuiles: str = "12", taille_tuile: int = 768, zoom: int = 1,
              largeur_visage: float | None = None, reperes: dict | None = None, symetrie: bool = False,
@@ -1595,8 +1688,8 @@ def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "a
     mes["ecretage"], cartes_ecr = mesurer_ecretage(natif, grille, fond_plein, al, genre)
     mes["tonalite"] = mesurer_tonalite(lab_r, al)
     y = luma(srgb8)
-    sigma, lap = mesurer_bruit(y)
-    ctx["sigma_bruit"], ctx["lap"] = sigma, lap
+    sigma, lap, calme = mesurer_bruit(y)
+    ctx["sigma_bruit"], ctx["lap"], ctx["calme"] = sigma, lap, calme
     mes["grain"] = {"sigma_pixel": round(sigma, 3) if sigma == sigma else None}
     mes["banding"], carte_band = mesurer_banding(srgb8, natif, grille, al)
     mes["contours"] = mesurer_halos(y, al)
@@ -1704,38 +1797,8 @@ def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "a
                        "Où la géométrie a bougé (fluidité, déformation).")
 
         # ---- tuiles à 100 %
-        dt = sortie / "tuiles"
-        s1, s2, _ = echelles_texture(mes.get("peau", {}).get("largeur_visage_px", max(W, H) * 0.15)) if "peau" in mes else (0.0, 2.5, 0)
-        for nom in choisies:
-            c, l = grille.depuis_nom(nom)
-            x0, y0, x1, y1 = grille.boite(c, l)
-            sous = [("", x0, y0, x1, y1)]
-            if zoom > 1:
-                mx, my = (x0 + x1) // 2, (y0 + y1) // 2
-                sous = [("a", x0, y0, mx, my), ("b", mx, y0, x1, my), ("c", x0, my, mx, y1), ("d", mx, my, x1, y1)]
-            for suf, a0, b0, a1, b1 in sous:
-                if a1 - a0 < 8 or b1 - b0 < 8:
-                    continue
-                bloc = srgb8[b0:b1, a0:a1]
-
-                def z(x):
-                    return x if zoom == 1 else cv2.resize(x, None, fx=zoom, fy=zoom, interpolation=cv2.INTER_CUBIC)
-
-                if ctx.get("avant_srgb8") is not None:
-                    image = cote_a_cote(z(ctx["avant_srgb8"][b0:b1, a0:a1]), z(bloc), f"{nom}{suf} avant", f"{nom}{suf} après")
-                else:
-                    image = etiqueter(z(bloc), f"{nom}{suf}  {zoom * 100} %")
-                ecrire(image, dt / f"{nom}{suf}.png")
-                if "peau" in mes:   # sur la peau, c'est la densité qu'on lit ; sur un produit, les poussières et les dégradés
-                    gauche, titre = vue_luminance(bloc), "luminance contrastée"
-                else:
-                    gauche, titre = vue_solarisation(bloc), "solarisation"
-                ctrl = cote_a_cote(z(gauche), z(vue_texture(bloc, 0.0, s2 if s2 > 0 else 2.5, 5.0)),
-                                   f"{nom}{suf} {titre}", f"{nom}{suf} passe-haut")
-                ecrire(ctrl, dt / f"{nom}{suf}_controle.png")
-                rapport["tuiles"].append({"cellule": f"{nom}{suf}", "fichier": f"tuiles/{nom}{suf}.png",
-                                          "controle": f"tuiles/{nom}{suf}_controle.png",
-                                          "boite_px": [int(a0), int(b0), int(a1), int(b1)], "zoom": zoom})
+        lv = mes.get("peau", {}).get("largeur_visage_px") if "peau" in mes else None
+        rapport["tuiles"] = sortir_tuiles(srgb8, ctx.get("avant_srgb8"), grille, choisies, zoom, sortie / "tuiles", lv)
 
     (sortie / "rapport.json").write_text(json.dumps(rapport, ensure_ascii=False, indent=2, default=_json), encoding="utf-8")
     (sortie / "rapport.md").write_text(rediger(rapport, sortie), encoding="utf-8")
@@ -1886,7 +1949,19 @@ def main(argv=None):
     p.add_argument("--reperes", help="fichier JSON de repères personnels (sortie de etalonner.py)")
     p.add_argument("--symetrie", action="store_true", help="mesurer symétrie, inclinaison et centrage du sujet (packshot de face)")
     p.add_argument("--sans-vues", action="store_true", help="mesures seules, sans images (traitement par lot)")
+    p.add_argument("--tuiles-seules", action="store_true",
+                   help="complément : écrit seulement les tuiles demandées par --tuiles dans le dossier de sortie, "
+                        "sans refaire les mesures ni toucher au rapport")
+    p.add_argument("--discret", action="store_true", help="n'affiche que le chemin du rapport, pas les alertes")
     a = p.parse_args(argv)
+    if a.tuiles_seules:
+        if a.tuiles.strip().isdigit():
+            p.error("--tuiles-seules attend une liste de cellules (--tuiles C4,D4) ou « toutes »")
+        avec_peau = a.genre in GENRES_PEAU or (a.genre == "auto" and bool(detecter_visages(charger(a.final)["srgb8"])))
+        t = tuiles_seules(a.final, a.avant, a.sortie, a.tuiles, a.taille_tuile, a.zoom, avec_peau, a.largeur_visage)
+        dossier = Path(a.sortie) if a.sortie else Path(a.final).with_name(Path(a.final).stem + "_controle")
+        print(f"{len(t)} tuiles écrites dans {dossier / 'tuiles'} : " + ", ".join(x["cellule"] for x in t))
+        return 0
     masques = {}
     for mq in a.masque:
         if "=" not in mq:
@@ -1898,6 +1973,9 @@ def main(argv=None):
         rep = json.loads(Path(a.reperes).read_text(encoding="utf-8")).get("reperes")
     r = analyser(a.final, a.avant, a.genre, masques, a.sortie, a.tuiles, a.taille_tuile, a.zoom, a.largeur_visage, rep,
                  a.symetrie, a.sans_vues)
+    if a.discret:
+        print(f"Rapport : {Path(r['dossier']) / 'rapport.md'}")
+        return 0
     n = {g: sum(1 for x in r["alertes"] if x["gravite"] == g) for g in ("majeur", "mineur", "info")}
     print(f"{r['fichier']['nom']} — genre {r['genre']} — alertes : {n['majeur']} majeures, {n['mineur']} mineures, {n['info']} infos")
     for x in r["alertes"]:

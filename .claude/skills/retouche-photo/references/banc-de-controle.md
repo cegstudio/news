@@ -50,6 +50,8 @@ Options de `controle_retouche.py` :
 | `--largeur-visage` | à donner si le visage n'est pas détecté ou mal mesuré |
 | `--reperes` | fichier de repères personnels |
 | `--sans-vues` | mesures seules, pour un lot |
+| `--tuiles-seules` | complément : écrit seulement les tuiles demandées par `--tuiles` dans le dossier de sortie, sans refaire les mesures ni toucher au rapport |
+| `--discret` | n'affiche que le chemin du rapport, pas les alertes |
 
 Durée mesurée : 6 s pour 9 Mpx, 21 s pour 45 Mpx avec original, 2,4 Go de mémoire.
 
@@ -90,7 +92,7 @@ Chaque cellule choisie donne `C4.png` (l'image à 100 %, avec l'original à gauc
 
 Le passe-haut est la vue la plus parlante : un gris uni à l'endroit où le reste est granuleux, c'est une texture perdue ; un motif qui se répète, c'est un tampon ; des traits orientés tous pareil, c'est une fluidité ou un flou directionnel.
 
-Les tuiles sont choisies d'office sur les cellules citées par une alerte, puis sur les yeux et la bouche, la peau, le sujet, et là où la retouche a le plus porté. Douze ne couvrent pas une image de 45 Mpx : demander celles qui manquent avec `--tuiles`, et `--zoom 2` pour un bijou.
+Les tuiles sont choisies d'office sur les cellules citées par une alerte, puis sur les yeux et la bouche, la peau, le sujet, et là où la retouche a le plus porté. Douze ne couvrent pas une image de 45 Mpx : demander celles qui manquent avec `--tuiles-seules --tuiles C4,D4` (même `--sortie` : elles s'ajoutent sans toucher au rapport), et `--zoom 2` pour un bijou. Relancer le banc complet dans le même dossier, lui, réécrit le rapport.
 
 ## 6. Codes d'alerte et faux positifs connus
 
@@ -116,7 +118,7 @@ Une alerte est une piste. Elle ne devient un défaut qu'une fois vue.
 | PEAU_TEXTURE_PERDUE, PEAU_TEXTURE_GONFLEE | pores conservés hors plage (avec original) | recadrage ou réduction entre original et final |
 | PEAU_APLAT | modelé écrasé, pores gardés | changement d'éclairage voulu |
 | PEAU_LISSAGE_LOCAL | plages plus lisses que le reste | zones hors mise au point, maquillage couvrant |
-| GRAIN_INCOHERENT | peau plus lisse au pixel que le reste | fond très texturé |
+| GRAIN_INCOHERENT | peau plus lisse au pixel que le reste de l'image, à luminosité comparable | fond très texturé, peau hors mise au point |
 | PEAU_TEINTE_INEGALE, PEAU_TACHES_AJOUTEES | plaques de couleur ; plus qu'avant | lumière mixte, maquillage coloré |
 | PEAU_VISAGE_CORPS, PEAU_VISAGE_DESACCORDE | visage et corps de couleurs différentes ; écart creusé par la retouche | éclairage coloré différent sur le corps |
 | PEAU_BRULEE, PEAU_HL_CRAYEUSES, PEAU_OMBRES_GRISES | brillances et ombres sans couleur | maquillage nacré, contre-jour |
@@ -161,6 +163,8 @@ Vérifié le 15/11/2026, sur des photos libres de droits et des défauts fabriqu
 | Image très grainée, non retouchée | 5 candidats poussière (4 487 avant correction du détecteur) |
 | Portrait non retouché | aucune alerte majeure ni mineure |
 
-Aussi vérifié : lecture d'un TIFF 16 bits, d'un PNG détouré et d'un fichier de 45 Mpx ; cohérence d'une série de quatre vues dont deux dérivées (les deux retrouvées) ; étalonnage sur un lot simulé de neuf paires.
+Aussi vérifié : lecture d'un TIFF 16 bits, d'un PNG détouré, d'un TIFF CMJN et d'un fichier de 45 Mpx ; fichiers en Adobe RGB et en ProPhoto (mêmes mesures de couleur que la version sRGB de la même image, couleurs hors sRGB signalées) ; cohérence d'une série de quatre vues dont deux dérivées (les deux retrouvées) ; étalonnage sur un lot simulé de neuf paires.
 
-Pas vérifié : aucune vraie retouche de Charles, aucun vrai fichier de bijou ou de montre en haute définition, aucun fichier en Adobe RGB ou ProPhoto, aucun PSD, aucune exécution sous Windows. Les seuils n'ont été confrontés à aucune image validée par lui. Tant que l'étalonnage n'est pas fait, lire les chiffres comme des ordres de grandeur.
+Essai de l'agent critique (15/11/2026) : sur un portrait où quatre défauts avaient été plantés sans le lui dire (peau floutée, visage rosi seul, mâchoire déplacée de 22 px, ciel postérisé), il a rendu « À REFAIRE », retrouvé les quatre avec leur zone et leur preuve, et relevé deux défauts non prévus (raccord net du flou dans les cheveux, lissage débordant sur les mèches). Il a aussi signalé six faiblesses du banc et de ses instructions, corrigées depuis. Un seul essai, sur une image fabriquée : ce n'est pas une preuve qu'il ne laisse rien passer.
+
+Pas vérifié : aucune vraie retouche de Charles, aucun vrai fichier de bijou ou de montre en haute définition, aucun PSD, aucun TIFF 16 bits sorti de Photoshop ou de Capture One, aucune exécution sous Windows. Les seuils n'ont été confrontés à aucune image validée par lui. Tant que l'étalonnage n'est pas fait, lire les chiffres comme des ordres de grandeur.

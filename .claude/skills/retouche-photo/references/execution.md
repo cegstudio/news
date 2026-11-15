@@ -38,7 +38,7 @@ Ne pas réexpliquer les outils : donner la décision et la valeur.
 
 ## 3. Connecteur Adobe pour Claude
 
-Disponible dans les conversations Claude de Charles. Ce que ses outils font, relevé dans leurs schémas le 15/11/2026 (aucun n'a été exécuté pour ce relevé : le premier usage réel dira ce qui tient) :
+Disponible dans les conversations Claude de Charles. Ce que ses outils font, relevé dans leurs schémas le 15/11/2026 (un seul appel a été tenté, refusé parce que l'image venait d'une URL externe : le premier usage réel sur une image de Charles dira ce qui tient) :
 
 | Outil | Ce qu'il fait | Utile pour |
 |---|---|---|
@@ -53,7 +53,7 @@ Disponible dans les conversations Claude de Charles. Ce que ses outils font, rel
 
 Mode d'emploi :
 - Le serveur demande d'appeler `adobe_mandatory_init` une fois avant tout autre outil. S'il n'apparaît pas dans la liste des outils, appeler directement l'outil voulu.
-- Sans image dans la conversation, `asset_add_file` ouvre le sélecteur de fichiers. Les outils travaillent sur des URL d'images.
+- Les outils travaillent sur des URL d'images, et seulement celles de domaines qu'Adobe accepte : une URL externe est refusée (« URL domain not whitelisted », constaté le 15/11/2026 avec une image hébergée ailleurs). L'image doit donc venir de la conversation, du sélecteur de fichiers (`asset_add_file`) ou du stockage Creative Cloud (`asset_initialize_file_upload` puis `asset_finalize_file_upload`).
 - Pour une seule image, les réglages et effets passent par les versions `interactive_…_app` (Charles ajuste les curseurs). Pour plusieurs, par les versions directes.
 - Avant de fixer une valeur de réglage, lire les noms et les bornes avec `interactive_image_get_options_for_adjustments_app` ; ne pas les supposer.
 - Sorties en PNG pendant le travail.

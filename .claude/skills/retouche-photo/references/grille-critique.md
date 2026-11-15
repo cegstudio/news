@@ -23,6 +23,18 @@ Le niveau de finition demandé déplace les gravités d'un cran, jamais de deux 
 | La couleur d'ensemble sert-elle l'intention du brief ? | aperçu, rapport (neutres) |
 | Voit-on la retouche ? | aperçu, à l'instinct, avant d'avoir lu les mesures |
 
+## Intégrité de la retouche
+
+Ce que la retouche a abîmé en passant, quel que soit le genre. Avec un original, c'est la vue des différences qui le montre.
+
+| Défaut | Comment il se voit | Gravité usuelle | Correction |
+|---|---|---|---|
+| Zone traitée alors que rien n'y était demandé (fond flouté, ciel débruité, décor nettoyé) | vue des différences, passe-haut vide là où l'original avait du grain | bloquant si elle se voit, majeur sinon | supprimer le traitement |
+| Raccord de sélection visible : bord net d'un flou, d'un réglage ou d'un calque | ligne droite ou contour net sur le passe-haut, la luminance ou la solarisation | bloquant | masque repris, progressif, ou traitement supprimé |
+| Masque qui déborde : traitement de la peau sur les cheveux, le col, le fond ; du produit sur le fond | plages mortes hors du sujet sur le passe-haut ; vue de teinte ou de saturation | majeur | repeindre le masque |
+| Ce que le brief interdisait a été fait (forme, étalonnage, recadrage) | DEFORMATION, écarts globaux du rapport | bloquant | revenir à l'original sur ce point |
+| Ce que le brief demandait n'a pas été fait | défaut encore présent sur la tuile « après » | selon le défaut | le faire |
+
 ## Peau
 
 | Défaut | Comment il se voit | Gravité usuelle | Correction |
@@ -41,7 +53,7 @@ Le niveau de finition demandé déplace les gravités d'un cran, jamais de deux 
 | Dents blanc papier, lèvres lissées | tuile de la bouche | mineur à majeur | baisser, rendre les stries |
 | Contour du visage ou des cheveux découpé | bord net artificiel, frange | majeur | masque repris, mèches rendues |
 | Permanents effacés (grain de beauté, rousseur) sans demande | avant/après | majeur | les rendre |
-| Silhouette modifiée | DEFORMATION ; vue de déformation | selon le brief ; bloquant si la mention légale manque | voir `livraison-droit.md` |
+| Silhouette ou visage modifiés | DEFORMATION ; vue de déformation | bloquant si le brief l'exclut ou si la mention légale manque ; sinon selon le brief (le banc, qui ne connaît pas le brief, annonce « mineur » ou « majeur » d'après l'ampleur) | retirer, ou voir `livraison-droit.md` |
 | Décor entraîné par la fluidité | lignes tordues près du corps | bloquant | geler et refaire |
 
 ## Lumière et couleur
