@@ -811,7 +811,12 @@ def detecter_poussieres(y: np.ndarray, sigma_bruit: float, exclure: np.ndarray |
         ww, hh = stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
         if 3 <= aire <= 400 and max(ww, hh) <= 40 and aire >= 0.3 * ww * hh:
             cx, cy = float(cent[i, 0]), float(cent[i, 1])
-            sur_fond = bool(fond[int(cy), int(cx)]) if fond is not None else False
+            sur_fond = False
+            if fond is not None:
+                # le point lui-même n'a pas la couleur du fond : c'est ce qui l'entoure qui dit où il est posé
+                r = int(max(ww, hh)) + 8
+                y0, y1, x0, x1 = max(0, int(cy) - r), int(cy) + r + 1, max(0, int(cx) - r), int(cx) + r + 1
+                sur_fond = float(fond[y0:y1, x0:x1].mean()) >= 0.7
             points.append((cx, cy, int(max(ww, hh)), sur_fond))
     mpx_lisse = max(0.05, float(lisse.sum()) / 1e6)
     densite = len(points) / mpx_lisse
