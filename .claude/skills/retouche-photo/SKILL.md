@@ -33,7 +33,7 @@ Niveaux de finition :
 | Édito, corporate, catalogue soigné | peau et matière travaillées, lumière affinée | une demi-heure à une heure et demie |
 | Campagne, beauté, joaillerie, horlogerie | chaque surface contrôlée à 100 %, voire 200 % | des heures : les sources citent huit heures de retouche pour une bague, et trois jours de travail pour trois images de montre, prise de vue comprise |
 
-Dire ce niveau à voix haute au début : promettre le troisième au prix du premier est la source de toutes les déceptions.
+Dire ce niveau à voix haute au début : promettre le troisième au prix du premier est la source de toutes les déceptions. Un bijou ou une montre se contrôle toujours comme au troisième niveau, même pour une simple fiche produit : l'objet est petit, brillant, et le client le regarde en grand.
 
 ## 2. L'ordre des passes
 
@@ -107,9 +107,9 @@ python scripts/controle_serie.py dossier --genre packshot
 python scripts/relever_rendu.py visuels_de_reference --genre montre --masques masques     # chiffrer un rendu à atteindre
 ```
 
-Les commandes se lancent depuis le dossier du skill ; ailleurs, donner le chemin complet du script. Dépendances : `pip install numpy pillow opencv-python-headless` (plus `tifffile` et `psd-tools` au besoin). Mode d'emploi complet et sens de chaque alerte : `references/banc-de-controle.md`.
+Les commandes se lancent depuis le dossier du skill ; ailleurs, donner le chemin complet du script. Sans `--sortie`, le banc écrit `<final>_controle` à côté de l'image. Dépendances : `pip install numpy pillow opencv-python-headless` (plus `tifffile` et `psd-tools` au besoin). Mode d'emploi complet et sens de chaque alerte : `references/banc-de-controle.md`.
 
-Donner l'« avant » chaque fois qu'il existe : la moitié des mesures utiles (texture conservée, déformation, ce qui a changé) en dépend. Pour une image simple, c'est l'original développé au même cadrage ; pour un empilement ou un composite, l'assemblage aplati avant retouche.
+Donner l'« avant » chaque fois qu'il existe : la moitié des mesures utiles (texture conservée, déformation, ce qui a changé) en dépend. Pour une image simple, c'est l'original développé au même cadrage ; pour un empilement ou un composite, l'assemblage aplati avant retouche. S'il n'existe pas, contrôler quand même, ranger la fidélité au produit et à la personne dans les doutes, et le demander pour la suite.
 
 **Faire relire par l'agent.** Lancer un sous-agent avec les instructions de `agents/critique-retouche.md` (dans Claude Code, l'agent `critique-retouche` s'il est installé). Lui donner :
 - les chemins du final et de l'original ;
@@ -118,7 +118,7 @@ Donner l'« avant » chaque fois qu'il existe : la moitié des mesures utiles (t
 
 Ne pas lui donner son propre avis sur l'image, ni la liste de ce qu'on croit réussi : un relecteur à qui on souffle la conclusion la confirme. Sans outil de sous-agent, appliquer soi-même `agents/critique-retouche.md` à la lettre, en commençant par le banc, et le signaler : c'est une relecture, pas une contre-expertise.
 
-**Boucler.** Transmettre le compte rendu tel quel à Charles, verdict en tête. Si des corrections sont à la portée d'un outil automatique, les faire, puis relancer banc et agent sur la nouvelle version avec le même original. Trois tours au plus ; ce qui résiste lui revient.
+**Boucler.** Transmettre le compte rendu tel quel à Charles, verdict en tête. S'il n'a demandé qu'un contrôle, ou n'a fourni qu'un export aplati, ne rien corriger : c'est lui qui reprend dans son fichier de travail. S'il a demandé de corriger et que la correction est à la portée d'un outil automatique, la faire sur une copie, puis relancer banc et agent sur la nouvelle version avec le même original. Trois tours au plus ; ce qui résiste lui revient.
 
 **Étalonner.** Les repères du banc sont des valeurs par défaut. Dès que Charles fournit des images qu'il a validées, lancer `scripts/etalonner.py` et utiliser le fichier produit avec `--reperes` : c'est ce qui fait passer le contrôle de « raisonnable » à « le sien ».
 

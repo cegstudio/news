@@ -784,7 +784,7 @@ def mesurer_blocs_jpeg(y: np.ndarray, al: Alertes, qualite: int | None = None) -
 
 
 def detecter_poussieres(y: np.ndarray, sigma_bruit: float, exclure: np.ndarray | None, grille: Grille, al: Alertes,
-                        genre: str) -> tuple[dict, list]:
+                        genre: str, fond: np.ndarray | None = None) -> tuple[dict, list]:
     """Candidats poussière / point / pétouille : petites taches isolées sur une surface lisse.
 
     L'écart de chaque tache est rapporté au grain qui l'entoure : sur une image très grainée, le grain lui-même
@@ -810,22 +810,34 @@ def detecter_poussieres(y: np.ndarray, sigma_bruit: float, exclure: np.ndarray |
         aire = stats[i, cv2.CC_STAT_AREA]
         ww, hh = stats[i, cv2.CC_STAT_WIDTH], stats[i, cv2.CC_STAT_HEIGHT]
         if 3 <= aire <= 400 and max(ww, hh) <= 40 and aire >= 0.3 * ww * hh:
-            points.append((float(cent[i, 0]), float(cent[i, 1]), int(max(ww, hh))))
+            cx, cy = float(cent[i, 0]), float(cent[i, 1])
+            sur_fond = bool(fond[int(cy), int(cx)]) if fond is not None else False
+            points.append((cx, cy, int(max(ww, hh)), sur_fond))
     mpx_lisse = max(0.05, float(lisse.sum()) / 1e6)
     densite = len(points) / mpx_lisse
     m = {"candidats": len(points), "surface_lisse_mpx": round(mpx_lisse, 2), "candidats_par_mpx_lisse": round(densite, 1)}
+    if fond is not None:
+        m["sur_le_sujet"] = sum(1 for p in points if not p[3])
+        m["sur_le_fond"] = sum(1 for p in points if p[3])
     if points:
         carte = np.zeros((grille.nl, grille.nc), np.int32)
-        for x, yy, _ in points:
+        for x, yy, _, _ in points:
             carte[min(grille.nl - 1, int(yy // grille.t)), min(grille.nc - 1, int(x // grille.t))] += 1
         ordre = np.argsort(carte.ravel())[::-1][:6]
         zones = [f"{grille.nom(int(i % grille.nc), int(i // grille.nc))} ({carte.ravel()[i]})" for i in ordre if carte.ravel()[i] > 0]
         m["cellules"] = zones
         if genre in GENRES_PRODUIT or genre == "general":
-            al.seuil("poussieres_par_mpx", densite, "POUSSIERES",
-                     f"{len(points)} petites taches isolées sur les surfaces lisses (poussières, pétouilles, points de capteur). "
-                     "Ce sont des candidats : un micro-reflet ou un détail gravé y figure aussi. Vérifier sur la vue dédiée.",
-                     ", ".join(zones), " /Mpx")
+            detail = (f" dont {m['sur_le_sujet']} sur l'objet, son ombre ou ses ajours (en rouge sur la vue) et {m['sur_le_fond']} sur le fond dégagé (en jaune)"
+                      if fond is not None else "")
+            texte = (f"{len(points)} petites taches isolées sur les surfaces lisses{detail} : poussières, pétouilles, points de capteur. "
+                     "Ce sont des candidats : un micro-reflet ou un détail gravé y figure aussi. Vérifier sur la vue dédiée.")
+            g = al.seuil("poussieres_par_mpx", densite, "POUSSIERES", texte, ", ".join(zones), " /Mpx")
+            if genre in GENRES_PRODUIT and fond is not None and m["sur_le_sujet"] > 0:
+                # une poussière sur l'objet d'un packshot ne se négocie pas, même si l'image en compte peu
+                if g is None:
+                    al.ajouter("POUSSIERES", "mineur", texte, ", ".join(zones), m["sur_le_sujet"], "0 sur l'objet")
+                elif g == "mineur" and m["sur_le_sujet"] >= 3:
+                    al.liste[-1]["gravite"] = "majeur"
     return m, points
 
 
@@ -1239,7 +1251,7 @@ def mesurer_masque(nom: str, masque: np.ndarray, ctx: dict, al: Alertes) -> dict
                     al.ajouter("MOIRE_COULEUR", "mineur",
                                f"Motif périodique de couleur dans la zone « {nom} » : moiré probable si la matière est unie.",
                                valeur=round(pic, 1), repere="pic < 40")
-    bas = nom.lower()
+    bas = nom.lower().replace("-", "_").replace(" ", "_")
     if bas.startswith(METAUX_BLANCS):
         al.seuil("metal_chroma", m["chroma_median"], "METAL_PAS_NEUTRE",
                  f"Le métal blanc « {nom} » n'est pas neutre : il tire vers le {nom_direction(am, bm)} (a* {am:+.1f}, b* {bm:+.1f}). "
@@ -1374,6 +1386,7 @@ def mesurer_symetrie(fond_r: np.ndarray) -> dict | None:
     return {"silhouette_symetrie_gauche_droite_pct": round(iou * 100, 1), "inclinaison_axe_deg": round(ang, 2),
             "centrage_horizontal_pct": round(((x + w / 2) / W - 0.5) * 100, 2),
             "centrage_vertical_pct": round(((y + h / 2) / H - 0.5) * 100, 2),
+            "occupation_largeur_pct": round(w / W * 100, 1), "occupation_hauteur_pct": round(h / H * 100, 1),
             "marges_pct": {"gauche": round(x / W * 100, 1), "droite": round((W - x - w) / W * 100, 1),
                            "haut": round(y / H * 100, 1), "bas": round((H - y - h) / H * 100, 1)}}
 
@@ -1408,9 +1421,10 @@ def vue_teinte(rgb8):
     lab = vers_lab(rgb8)
     c = np.hypot(lab[..., 1], lab[..., 2])
     hsv = cv2.cvtColor(rgb8, cv2.COLOR_RGB2HSV)
-    hsv[..., 1], hsv[..., 2] = 255, 255
+    hsv[..., 1] = np.where(c >= 6, 255, 130).astype(np.uint8)   # teinte franche, ou pastel pour une dominante légère
+    hsv[..., 2] = 255
     out = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-    out[c < 6] = 128
+    out[c < 2.5] = 128
     return out
 
 
@@ -1731,7 +1745,7 @@ def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "a
     if ctx.get("peau_r") is not None:
         excl = cv2.resize(cv2.dilate(ctx["peau_r"].astype(np.uint8), np.ones((9, 9), np.uint8)), (W, H),
                           interpolation=cv2.INTER_NEAREST) > 0
-    mes["poussieres"], points = detecter_poussieres(y, sigma, excl, grille, al, genre)
+    mes["poussieres"], points = detecter_poussieres(y, sigma, excl, grille, al, genre, fond_plein)
 
     # ---- avant / après
     if ctx.get("avant_srgb8") is not None:
@@ -1792,10 +1806,11 @@ def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "a
         if points:
             im = Image.fromarray(vue_solarisation(vue))
             d = ImageDraw.Draw(im)
-            for x, yy, t in points[:1500]:
+            for x, yy, t, sur_fond in points[:1500]:
                 r = max(5, t / fv + 4)
-                d.ellipse([x / fv - r, yy / fv - r, x / fv + r, yy / fv + r], outline=(255, 255, 0), width=1)
-            sauver("09_poussieres.jpg", np.asarray(im), f"{len(points)} candidats poussière ou point, cerclés sur la vue solarisée. À confirmer à 100 %.")
+                d.ellipse([x / fv - r, yy / fv - r, x / fv + r, yy / fv + r], outline=(255, 255, 0) if sur_fond else (255, 40, 40), width=2)
+            sauver("09_poussieres.jpg", np.asarray(im), f"{len(points)} candidats poussière ou point, cerclés sur la vue solarisée : "
+                   "en rouge sur l'objet, son ombre ou ses ajours, en jaune sur le fond dégagé. À confirmer à 100 %.")
         if ctx.get("carte_dE") is not None:
             av_vue = reduire(ctx["avant_srgb8"], VUE_MAX)
             sauver("10_avant_apres.jpg", cote_a_cote(reduire(av_vue, VUE_MAX // 2), reduire(vue, VUE_MAX // 2), "avant", "après"),
@@ -1875,6 +1890,7 @@ def rediger(r: dict, sortie: Path) -> str:
     p = m.get("poussieres")
     if p:
         L.append(f"- Poussières et points : {p['candidats']} candidats ({p['candidats_par_mpx_lisse']} par Mpx de surface lisse)"
+                 + (f", dont {p['sur_le_sujet']} sur l'objet, son ombre ou ses ajours et {p['sur_le_fond']} sur le fond dégagé" if "sur_le_sujet" in p else "")
                  + (f" — {', '.join(p['cellules'])}" if p.get("cellules") else ""))
     if "peau" in m:
         pe = m["peau"]
@@ -1925,7 +1941,8 @@ def rediger(r: dict, sortie: Path) -> str:
         L += ["", "### Symétrie et cadrage du sujet", ""]
         L.append(f"- Silhouette symétrique à {s['silhouette_symetrie_gauche_droite_pct']} %, axe incliné de {s['inclinaison_axe_deg']}°, "
                  f"centrage horizontal {s['centrage_horizontal_pct']:+} %, vertical {s['centrage_vertical_pct']:+} %")
-        L.append(f"- Marges : gauche {s['marges_pct']['gauche']} %, droite {s['marges_pct']['droite']} %, haut {s['marges_pct']['haut']} %, bas {s['marges_pct']['bas']} %")
+        L.append(f"- Marges : gauche {s['marges_pct']['gauche']} %, droite {s['marges_pct']['droite']} %, haut {s['marges_pct']['haut']} %, bas {s['marges_pct']['bas']} % ; "
+                 f"le sujet occupe {s['occupation_largeur_pct']} % de la largeur et {s['occupation_hauteur_pct']} % de la hauteur (ombre dense comprise)")
     if r["vues"]:
         L += ["", "## Vues de contrôle", ""]
         for v in r["vues"]:

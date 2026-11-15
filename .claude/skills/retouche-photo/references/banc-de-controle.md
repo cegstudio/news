@@ -46,12 +46,13 @@ Options de `controle_retouche.py` :
 | Option | Effet |
 |---|---|
 | `--avant` | original au même cadrage (pour un empilement ou un composite : l'assemblage aplati avant retouche) : active toutes les mesures « conservé par la retouche », la carte des différences et la détection de déformation |
-| `--genre` | `beaute`, `portrait`, `mode`, `bijou`, `montre`, `packshot`, `general`, ou `auto` (visage détecté → portrait, fond uni → packshot) |
+| `--sortie` | dossier de sortie. Par défaut `<final>_controle`, à côté du fichier : le donner dès que ce dossier ne doit pas être touché |
+| `--genre` | `beaute`, `portrait`, `mode` : contrôles de peau. `bijou`, `montre`, `packshot` : contrôles de produit, identiques pour les trois (neutres exigés, fond, poussières). `general` : ni l'un ni l'autre. `auto` : visage détecté → portrait, fond uni → packshot |
 | `--masque nom=fichier` | zone à mesurer à part (blanc = zone). Répétable. Voir § 7 |
 | `--tuiles` | `12` par défaut ; un nombre, `toutes`, ou une liste `C4,D4` |
 | `--zoom 2` | tuiles à 200 %, chaque cellule coupée en quatre (a, b, c, d) |
 | `--taille-tuile` | côté d'une cellule, 768 px par défaut |
-| `--symetrie` | symétrie, inclinaison, centrage et marges du sujet sur fond uni. La symétrie et l'inclinaison ne valent que pour un objet de face ; de trois quarts, lire seulement centrage et marges |
+| `--symetrie` | symétrie, inclinaison, centrage, marges et part du cadre occupée par le sujet sur fond uni. Le « sujet » est tout ce qui n'est pas le fond, ombre dense comprise : pour le taux d'occupation exigé par une place de marché, mesurer sur un masque de l'objet. La symétrie et l'inclinaison ne valent que pour un objet de face ; de trois quarts, lire seulement centrage et marges |
 | `--largeur-visage` | à donner si le visage n'est pas détecté ou mal mesuré |
 | `--reperes` | fichier de repères personnels |
 | `--sans-vues` | mesures seules, pour un lot |
@@ -79,12 +80,12 @@ Les cellules sont nommées comme sur un plan : colonne en lettre, ligne en chiff
 | `02_solarisation` | courbe en dents de scie par canal | poussières, raccords de tampon, dégradés irréguliers, paliers, salissures du fond |
 | `03_luminance` | noir et blanc contrasté | hiérarchie de lumière, taches de densité, halos de dodge and burn, dégradés de métal |
 | `04_saturation` | blanc = saturé | plaques de saturation, bords de masque, zones éteintes |
-| `05_teinte` | teinte seule à saturation maximale, gris = neutre | plaques de teinte sur la peau, métal ou fond qui vire, dominantes locales |
+| `05_teinte` | teinte seule : couleur franche pour une teinte nette, pastel pour une dominante légère, gris pour un neutre | plaques de teinte sur la peau, métal ou fond qui vire, dominantes locales |
 | `05b_masque_peau` | ce que les mesures ont pris pour de la peau | si le masque déborde ou manque, les chiffres de peau sont à relativiser |
 | `06_texture` | passe-haut de l'aperçu | continuité de la matière à l'échelle de l'image |
 | `07_fond` | fond étiré au maximum | fond sale ou inégal, halo et frange de détourage, ombre coupée |
 | `08_paliers` | carte des marches franches | où se trouve le banding |
-| `09_poussieres` | candidats cerclés sur la solarisation | poussières, pétouilles, points de capteur |
+| `09_poussieres` | candidats cerclés sur la solarisation : en rouge sur l'objet, son ombre ou ses ajours, en jaune sur le fond dégagé | poussières, pétouilles, points de capteur |
 | `10_avant_apres` | original et final | ce qui a changé, d'un coup d'œil |
 | `11_difference` | à gauche l'écart total, à droite l'écart local (étalonnage retiré) | où la retouche a porté, ce qui a été oublié |
 | `12_deformation` | déplacement des pixels | fluidité, déformation, ce qu'elle a entraîné |
@@ -97,11 +98,13 @@ Chaque cellule choisie donne `C4.png` (l'image à 100 %, avec l'original à gauc
 
 Le passe-haut est la vue la plus parlante : un gris uni à l'endroit où le reste est granuleux, c'est une texture perdue ; un motif qui se répète, c'est un tampon ; des traits orientés tous pareil, c'est une fluidité ou un flou directionnel.
 
+À 200 %, l'agrandissement crénelle les contours : juger un détourage sur la tuile à 100 % ou sur la mesure de transition du rapport, pas sur le crénelage.
+
 Les tuiles sont choisies d'office sur les cellules citées par une alerte, puis sur les yeux et la bouche, la peau, le sujet, et là où la retouche a le plus porté. Douze ne couvrent pas une image de 45 Mpx : demander celles qui manquent avec `--tuiles-seules --tuiles C4,D4` (même `--sortie` : elles s'ajoutent sans toucher au rapport), et `--zoom 2` pour un bijou. Relancer le banc complet dans le même dossier, lui, réécrit le rapport.
 
 ## 6. Codes d'alerte et faux positifs connus
 
-Une alerte est une piste. Elle ne devient un défaut qu'une fois vue.
+Une alerte est une piste. Elle ne devient un défaut qu'une fois vue. Le banc ne connaît ni le brief ni la destination : il annonce « majeur », « mineur » ou « info », jamais « bloquant ». La gravité finale se décide avec la grille, et un « majeur » du banc est souvent bloquant sur un produit de luxe.
 
 | Code | Signifie | Faux positifs connus |
 |---|---|---|
@@ -120,7 +123,7 @@ Une alerte est une piste. Elle ne devient un défaut qu'une fois vue.
 | FAUX_16_BITS | 16 bits issu d'un 8 bits | aucun |
 | HALOS | dépassement aux contours francs | contours naturellement liserés (contre-jour, rim light) |
 | BLOCS_JPEG, JPEG_QUALITE_BASSE | compression visible | aucun en dessous de la qualité 90 |
-| POUSSIERES | petites taches isolées sur surface lisse | micro-reflets, gravures, grains de beauté, étoiles, paillettes |
+| POUSSIERES | petites taches isolées sur surface lisse, comptées à part sur l'objet (avec son ombre et ses ajours) et sur le fond dégagé | micro-reflets, gravures, index, grains de beauté, étoiles, paillettes |
 | PEAU_TEXTURE_PERDUE, PEAU_TEXTURE_GONFLEE | pores conservés hors plage (avec original) | recadrage ou réduction entre original et final |
 | PEAU_APLAT | modelé écrasé, pores gardés | changement d'éclairage voulu |
 | PEAU_LISSAGE_LOCAL | plages plus lisses que le reste | zones hors mise au point, maquillage couvrant |
@@ -142,7 +145,7 @@ Un masque est une image en niveaux de gris à la taille du fichier, blanc sur la
 
 Le nom décide du contrôle appliqué :
 - `peau` : remplace la détection automatique de la peau.
-- `metal`, `acier`, `argent`, `platine`, `or_blanc`, `titane` : neutralité et étendue tonale.
+- `metal`, `acier`, `argent`, `platine`, `or_blanc`, `titane` : neutralité et étendue tonale. Tirets et espaces sont pris pour des soulignés (`or-blanc` vaut `or_blanc`).
 - `or…`, `gold…` : étendue tonale, teinte relevée.
 - `tissu…`, `vetement…`, `maille…`, `cuir…`, `soie…`, `velours…`, `denim…` : matière conservée, couleur bouchée, noir sans matière, moiré.
 - tout autre nom (`pierre`, `cadran`, `fond`…) : statistiques seules (L*, a*, b*, teinte, écrêtage, texture).

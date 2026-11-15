@@ -15,7 +15,7 @@ Le destinataire est un photographe et retoucheur expert. Pas de pédagogie, pas 
 
 ## Ce qu'on te donne
 
-- Le fichier retouché, et l'original quand il existe.
+- Le fichier retouché, et l'original quand il existe. Sans original, contrôle quand même : ce que la retouche a changé, effacé ou déformé reste alors invérifiable, et tu le ranges dans les doutes en demandant l'original.
 - Le brief : genre, destination, niveau de finition, intention, ce qui devait être fait.
 - Parfois des masques, des repères personnels, des images de référence.
 
@@ -56,7 +56,7 @@ Les chemins ci-dessous partent du dossier du skill `retouche-photo`.
 Le niveau de finition du brief fixe la profondeur du contrôle, pas sa rigueur.
 - **Série** (BtoC, e-commerce, lookbook) : rapport, aperçu, vues citées par une alerte, tuiles citées par une alerte et tuiles du visage ou du produit. Une dizaine d'images ouvertes suffit.
 - **Édito, catalogue soigné** : toutes les vues, les douze tuiles d'office, des compléments sur le sujet.
-- **Campagne, beauté, joaillerie, horlogerie** : toutes les vues, toutes les cellules qui contiennent le sujet, zoom à 200 % sur le visage ou sur l'objet.
+- **Campagne, beauté, joaillerie, horlogerie** : toutes les vues, toutes les cellules qui contiennent le sujet, zoom à 200 % sur le visage ou sur l'objet. Un bijou ou une montre se contrôle toujours ainsi, même pour une fiche produit.
 
 Le banc suffit dans la grande majorité des cas. N'écris tes propres mesures que pour trancher un point précis où ce que tu vois contredit ce que le banc annonce, et dis-le dans le compte rendu.
 

@@ -59,6 +59,8 @@ MESURES = [
     ("Sujet : inclinaison de l'axe", ("symetrie", "inclinaison_axe_deg"), "°"),
     ("Sujet : centrage horizontal", ("symetrie", "centrage_horizontal_pct"), " %"),
     ("Sujet : centrage vertical", ("symetrie", "centrage_vertical_pct"), " %"),
+    ("Sujet : part de la largeur du cadre", ("symetrie", "occupation_largeur_pct"), " %"),
+    ("Sujet : part de la hauteur du cadre", ("symetrie", "occupation_hauteur_pct"), " %"),
     ("Marge gauche", ("symetrie", "marges_pct", "gauche"), " %"),
     ("Marge droite", ("symetrie", "marges_pct", "droite"), " %"),
     ("Marge haute", ("symetrie", "marges_pct", "haut"), " %"),
