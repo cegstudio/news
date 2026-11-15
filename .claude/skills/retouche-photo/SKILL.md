@@ -15,7 +15,7 @@ S'adresser à lui en français, en le tutoyant, sans rappeler les bases ni refor
 
 ## 1. Qualifier avant de toucher un pixel
 
-Cinq informations décident de tout le reste. Les déduire de l'image et de la demande ; s'il en manque une qui change le travail, poser une seule question, sinon trancher et annoncer l'hypothèse.
+Cinq informations décident de tout le reste. Les déduire de l'image et de la demande ; s'il en manque une qui change le travail, poser une seule question, sinon trancher et annoncer l'hypothèse. La question se pose en fin de réponse et ne retient rien : le plan ou le contrôle se donne tout de suite, sur l'hypothèse annoncée.
 
 | Information | Pourquoi elle compte |
 |---|---|
@@ -39,16 +39,20 @@ Dire ce niveau à voix haute au début : promettre le troisième au prix du prem
 
 Chaque passe prépare la suivante. Les faire dans le désordre oblige à les refaire.
 
-0. **Fichier de travail** : 16 bits, espace large, base neutre au dérawtisage (pas de rendu), original conservé sous tout le reste.
-1. **Nettoyage** : ce qui n'aurait pas dû être là (poussières, peluches, boutons, reflets parasites). Avant le reste, parce que toute passe suivante amplifie ce qu'on a laissé.
-2. **Forme** : assemblage, géométrie, symétrie, fluidité. Avant la lumière, parce que déplacer des pixels déplace aussi le dodge and burn.
-3. **Lumière** : dodge and burn, du grand vers le petit. Avant la couleur, parce qu'assombrir et éclaircir dérèglent la saturation.
-4. **Couleur locale** : raccords, rougeurs, neutralité des métaux, fidélité des matières.
-5. **Matière** : texture greffée ou restituée, netteté créative par zone.
-6. **Étalonnage** : le rendu d'ensemble, dans un groupe au-dessus de tout. Après le local, parce qu'un étalonnage masque les taches qu'on devait corriger.
-7. **Finition** : grain commun, puis netteté de sortie à la taille livrée.
-8. **Contrôle** : banc et agent critique (§ 6).
-9. **Export** par destination, puis contrôle du fichier livré, pas du maître.
+0. **Fichier de travail et assemblage** : 16 bits, espace large, base neutre au dérawtisage (pas de rendu), original conservé sous tout le reste. C'est aussi là que se font l'empilement de mise au point et la composition d'expositions séparées. La version assemblée et aplatie, avant toute retouche, sert d'« avant » au banc.
+1. **Découpe** : tracés et masques des zones qui se traitent séparément (produit pièce par pièce, peau, vêtement, fond). En premier, parce que tout le travail d'un produit se fait à l'intérieur de ses tracés.
+2. **Nettoyage** : ce qui n'aurait pas dû être là (poussières, peluches, boutons, reflets parasites). Avant le reste, parce que toute passe suivante amplifie ce qu'on a laissé.
+3. **Forme** : géométrie, symétrie, fluidité. Avant la lumière, parce que déplacer des pixels déplace aussi le dodge and burn.
+4. **Lumière** : dodge and burn, du grand vers le petit ; dégradés d'un métal reconstruits. Avant la couleur, parce qu'assombrir et éclaircir dérèglent la saturation.
+5. **Couleur locale** : raccords, rougeurs, neutralité des métaux, fidélité des matières.
+6. **Matière** : texture greffée ou restituée, netteté créative par zone.
+7. **Fond, ombre, reflet au sol** : après l'objet, parce qu'ils obéissent à sa lumière.
+8. **Étalonnage** : le rendu d'ensemble, dans un groupe au-dessus de tout. Après le local, parce qu'un étalonnage masque les taches qu'on devait corriger.
+9. **Finition** : grain commun, puis netteté de sortie à la taille livrée.
+10. **Contrôle** : banc et agent critique (§ 6).
+11. **Export** par destination, puis contrôle du fichier livré, pas du maître.
+
+Sur un portrait, les passes 1 et 7 pèsent peu ; sur un bijou ou une montre, elles font la moitié du travail. Les références de domaine détaillent cet ordre, elles ne le changent pas.
 
 ## 3. Ce qui ne se négocie pas
 
@@ -63,7 +67,7 @@ Chaque passe prépare la suivante. Les faire dans le désordre oblige à les ref
 
 ## 4. Lire la référence du domaine
 
-Ne charger que ce que l'image demande.
+Ne charger que ce que l'image demande. Une image relève souvent de deux ou trois fichiers : `lumiere-couleur.md` vaut pour tous les genres dès qu'il y a un dégradé, un étalonnage ou une conversion (presse, CMJN), et `livraison-droit.md` dès qu'une destination est nommée.
 
 | Sujet | Fichier | Contenu |
 |---|---|---|
@@ -77,7 +81,7 @@ Ne charger que ce que l'image demande.
 | Automatisation | `references/automatisation.md` | ce qui s'automatise, architecture, ce qu'il faut demander à Charles |
 | Faits datés, sources | `references/veille-2026-11.md` | état des outils et des textes au 15/11/2026 |
 
-Les outils et les règles changent vite. Ce que dit `veille-2026-11.md` est daté : avant d'affirmer qu'un outil fait ou ne fait pas quelque chose, ou qu'une obligation s'applique, refaire une recherche web et donner la source.
+Les outils et les règles changent vite. Ce que dit `veille-2026-11.md` est daté : si ce relevé a plus d'un mois, ou si le point n'y figure pas, refaire une recherche web avant d'affirmer qu'un outil fait ou ne fait pas quelque chose, ou qu'une obligation s'applique, et donner la source.
 
 ## 5. Choisir la voie d'exécution
 
@@ -97,11 +101,15 @@ Aucune image n'est dite livrable sans elle, et elle sert aussi seule, quand Char
 
 ```
 python scripts/controle_retouche.py final.tif --avant original.tif --genre beaute
-python scripts/controle_retouche.py montre.tif --genre montre --symetrie --zoom 2 --masque metal=m.png
+python scripts/controle_retouche.py bague.tif --avant assemblage.tif --genre bijou --zoom 2 --masque or_blanc=m_metal.png --masque pierre=m_pierre.png
+python scripts/controle_retouche.py final.tif --avant original.tif --tuiles-seules --tuiles C4,D4     # complément, sans refaire les mesures
 python scripts/controle_serie.py dossier --genre packshot
+python scripts/relever_rendu.py visuels_de_reference --genre montre --masques masques     # chiffrer un rendu à atteindre
 ```
 
-Dépendances : `pip install numpy pillow opencv-python-headless` (plus `tifffile` et `psd-tools` au besoin). Mode d'emploi complet et sens de chaque alerte : `references/banc-de-controle.md`. Donner l'original chaque fois qu'il existe : la moitié des mesures utiles (texture conservée, déformation, ce qui a changé) en dépend.
+Les commandes se lancent depuis le dossier du skill ; ailleurs, donner le chemin complet du script. Dépendances : `pip install numpy pillow opencv-python-headless` (plus `tifffile` et `psd-tools` au besoin). Mode d'emploi complet et sens de chaque alerte : `references/banc-de-controle.md`.
+
+Donner l'« avant » chaque fois qu'il existe : la moitié des mesures utiles (texture conservée, déformation, ce qui a changé) en dépend. Pour une image simple, c'est l'original développé au même cadrage ; pour un empilement ou un composite, l'assemblage aplati avant retouche.
 
 **Faire relire par l'agent.** Lancer un sous-agent avec les instructions de `agents/critique-retouche.md` (dans Claude Code, l'agent `critique-retouche` s'il est installé). Lui donner :
 - les chemins du final et de l'original ;
@@ -129,7 +137,7 @@ Pièges de cette image : <deux ou trois, propres à elle>
 Contrôle : <la commande du banc à lancer à l'export, avec ses options>
 ```
 
-Un plan tient sur un écran. Les valeurs sont des points de départ et se donnent comme telles.
+Sans image sous les yeux, la ligne « Lecture » devient la liste des hypothèses retenues. Un plan de série tient sur un écran ; un plan de campagne garde une ou deux lignes par passe. Les valeurs sont des points de départ et se donnent comme telles ; quand elles ne viennent pas des références, le dire.
 
 **Contrôle d'une image** : le compte rendu de l'agent, sans le résumer ni l'adoucir. Si Charles veut juste le verdict, le verdict et les bloquants.
 
@@ -139,7 +147,7 @@ Un plan tient sur un écran. Les valeurs sont des points de départ et se donnen
 
 `references/automatisation.md` décrit ce qui s'automatise aujourd'hui, l'architecture cible (tri, masques, passes, banc, agent, file de validation, export) et la liste de ce qu'il faut obtenir de Charles pour la construire : paires avant/après validées, visuels de référence des maisons visées, chaîne logicielle exacte, cahiers des charges de livraison. Tant que ces éléments manquent, l'automatisation reste générique ; les demander plutôt que d'inventer.
 
-Toute proposition d'outil se justifie face à l'existant décrit dans `ceg-stack`, et tout nouvel outil est jugé sur pièces : il passe au banc contre une retouche validée, et n'entre dans la chaîne que s'il fait au moins aussi bien.
+Tout outil nouveau proposé pour la chaîne (pas le conseil d'usage d'un logiciel qu'il a déjà) se justifie face à l'existant décrit dans `ceg-stack`, et il est jugé sur pièces : il passe au banc contre une retouche validée, et n'entre dans la chaîne que s'il fait au moins aussi bien.
 
 ## 9. Dire les limites
 

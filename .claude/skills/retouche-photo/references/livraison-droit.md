@@ -11,7 +11,7 @@ Relevé au 15/11/2026 (`veille-2026-11.md`). Les spécifications changent : dema
 | Google Merchant | 1500 px conseillés, 64 Mpx et 16 Mo au plus, produit sur 75 à 90 % du cadre | aide officielle |
 | Amazon | fond blanc pur 255/255/255, produit sur 85 % du cadre, 1000 px au moins | d'après un guide tiers, page officielle non lue |
 | Instagram | JPEG sRGB ; le HDR passe par un JPEG avec gain map envoyé depuis un ordinateur | recompression forte : grain fin contre le banding |
-| Presse magazine | CMJN, 300 ppp, profil et taux d'encrage de la fiche du titre, fonds perdus | exemple (IDEAT, 2017) : ISO Coated v2 300 %, 5 mm de fonds perdus, 16 bits refusé, épreuve avec bande de contrôle |
+| Presse magazine | CMJN, 300 ppp, profil et taux d'encrage de la fiche du titre, fonds perdus (le banc relève le taux d'encrage d'un TIFF CMJN) | exemple (IDEAT, 2017) : ISO Coated v2 300 %, 5 mm de fonds perdus, 16 bits refusé, épreuve avec bande de contrôle |
 | Affichage | PDF, profil de la régie | exemple (JCDecaux Finlande) : Coated FOGRA39, pas de JPEG ; échelle et résolution selon le format |
 | Archive, maître | TIFF ou PSD 16 bits, espace large, calques | jamais livré tel quel |
 
@@ -70,4 +70,4 @@ D'après l'aide d'Adobe, depuis août 2026 Adobe attache automatiquement des Con
 
 ## 6. À la livraison, par écrit
 
-Trois lignes dans le message de livraison quand elles s'appliquent : silhouette modifiée ou non ; part d'image générée par IA, et où ; déclinaisons de coloris ou de métal faites en retouche. C'est ce qui permet au client de remplir ses propres obligations, et c'est ce qui protège Charles.
+Trois lignes dans le message de livraison quand elles s'appliquent : silhouette modifiée ou non ; part d'image générée par IA, et où ; déclinaisons de coloris ou de métal faites en retouche. C'est ce qui permet au client de remplir ses propres obligations, et c'est ce qui protège Charles. Si aucune ne s'applique, ne rien ajouter.

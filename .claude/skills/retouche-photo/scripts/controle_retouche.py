@@ -221,6 +221,9 @@ def charger(chemin: str | Path) -> dict:
                     infos["remarques"].append("Transparence aplatie sur blanc pour l'analyse.")
                 if im2.mode == "CMYK":
                     infos["remarques"].append("Fichier CMJN : converti en sRGB pour l'analyse, les mesures d'écrêtage ne valent que pour cette conversion.")
+                    encre = np.asarray(im2).astype(np.uint16).sum(axis=2) / 255.0 * 100.0
+                    infos["encrage_total_max_pct"] = round(float(encre.max()), 1)
+                    infos["encrage_total_p99_9_pct"] = round(float(np.percentile(encre[::2, ::2], 99.9)), 1)
                     rgb8, nom, _, _ = _vers_srgb(im2, icc)
                     infos["profil"] = nom
                     return _finir(chemin, infos, rgb8, rgb8, deja_srgb=True)
@@ -578,10 +581,13 @@ def mesurer_fond(fond_r: np.ndarray, lab_r: np.ndarray, srgb8: np.ndarray, al: A
         if grand.any():
             pur = float(np.all(srgb8[grand] == 255, axis=1).mean()) * 100
             m["blanc_pur_pct"] = round(pur, 2)
-            if pur < 99.0 and Lm >= 97:
-                al.seuil("fond_blanc_pur_pct", pur, "FOND_BLANC_PAS_PUR",
-                         "Le fond blanc n'est pas à 255 partout. Sans conséquence pour un fond blanc cassé voulu ; "
-                         "bloquant pour une place de marché qui exige du blanc pur, et visible sur une page blanche.", unite=" %")
+            if pur < 99.0:
+                texte = (f"Le fond est un blanc à L* {Lm:.1f}, à 255 sur {pur:.0f} % seulement de sa surface. Sans conséquence pour un "
+                         "blanc cassé voulu ; bloquant pour une place de marché qui exige du blanc pur, et visible sur une page blanche.")
+                if genre in GENRES_PRODUIT:
+                    al.seuil("fond_blanc_pur_pct", pur, "FOND_BLANC_PAS_PUR", texte, unite=" %")
+                else:
+                    al.ajouter("FOND_BLANC_PAS_PUR", "info", texte, valeur=round(pur, 2), repere="≥ 99 %")
     if typ != "couleur" or genre in GENRES_PRODUIT:
         al.seuil("fond_etendue_L", m["etendue_L_p2_p98"], "FOND_INEGAL",
                  "Le fond varie en luminosité. Normal pour un dégradé voulu ; sinon fond sale ou vignetage à égaliser (voir la vue du fond).")
@@ -789,10 +795,11 @@ def detecter_poussieres(y: np.ndarray, sigma_bruit: float, exclure: np.ndarray |
     med = cv2.medianBlur(np.clip(yl, 0, 255).astype(np.uint8), 15).astype(np.float32)
     res = yl - med
     local = np.sqrt(np.maximum(cv2.boxFilter(res * res, cv2.CV_32F, (41, 41), borderType=cv2.BORDER_REFLECT), 0))
-    # surface lisse : faible rugosité à l'échelle ~20 px. Estimée par une médiane, pour qu'une poussière
-    # ne rende pas « rugueuse » la surface sur laquelle elle est posée
+    # surface lisse : faible rugosité autour du point. La médiane se prend sur une fenêtre assez large (41 px) pour
+    # qu'une poussière, qui perturbe l'image sur une dizaine de pixels autour d'elle, ne rende pas « rugueuse » la
+    # surface sur laquelle elle est posée, tout en laissant rugueux un tissu à motif ou une chevelure.
     rr = np.clip(np.abs(y - flou(y, 4)) * 8, 0, 255).astype(np.uint8)
-    rug = cv2.medianBlur(rr, 21).astype(np.float32) / 8.0
+    rug = cv2.medianBlur(rr, 41).astype(np.float32) / 8.0
     lisse = rug < max(1.2, 2.5 * sig)
     if exclure is not None:
         lisse &= ~exclure
@@ -1643,6 +1650,12 @@ def analyser(final: str | Path, avant: str | Path | None = None, genre: str = "a
                    f"{infos['hors_gamut_srgb_pct']} % des pixels sortent du sRGB (profil {infos['profil']}) : "
                    "ces couleurs seront écrêtées sur le web. Épreuver en sRGB avant l'export.",
                    valeur=infos["hors_gamut_srgb_pct"], repere="≤ 1 %")
+    if infos.get("encrage_total_p99_9_pct") is not None:
+        enc = infos["encrage_total_p99_9_pct"]
+        al.ajouter("ENCRAGE", "mineur" if enc > 300 else "info",
+                   f"Fichier CMJN : taux d'encrage total de {enc:.0f} % dans les zones les plus chargées (maximum {infos['encrage_total_max_pct']:.0f} %). "
+                   "À comparer à la limite de la fiche technique du support (300 % est courant en presse magazine).",
+                   valeur=enc, repere="limite du support")
     if infos.get("format") == "JPEG" and infos.get("qualite_jpeg_estimee") and infos["qualite_jpeg_estimee"] < 85:
         al.ajouter("JPEG_QUALITE_BASSE", "mineur", f"JPEG enregistré vers la qualité {infos['qualite_jpeg_estimee']} : trop bas pour une livraison.",
                    valeur=infos["qualite_jpeg_estimee"], repere="≥ 90")
@@ -1825,6 +1838,8 @@ def rediger(r: dict, sortie: Path) -> str:
     if f.get("avant"):
         L.append(f"- Original : {f['avant']['nom']} ({f['avant']['alignement']})")
     L.append(f"- Genre retenu : {r['genre']} — grille {r['grille']['colonnes']} × {r['grille']['lignes']} cellules de {r['grille']['cellule_px']} px")
+    if f.get("encrage_total_p99_9_pct") is not None:
+        L.append(f"- Encrage total (CMJN) : {f['encrage_total_p99_9_pct']} % dans les zones les plus chargées, maximum {f['encrage_total_max_pct']} %")
     for rq in f.get("remarques", []):
         L.append(f"- Remarque : {rq}")
     L += ["", "## Alertes", ""]

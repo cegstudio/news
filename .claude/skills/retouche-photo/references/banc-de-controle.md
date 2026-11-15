@@ -2,7 +2,7 @@
 
 ## Sommaire
 1. Installation
-2. Les trois scripts
+2. Les scripts
 3. Ce qui sort
 4. Lire les vues
 5. Lire les tuiles
@@ -20,9 +20,11 @@ pip install tifffile psd-tools        # facultatif : TIFF 16 bits compressés, P
 
 Python 3.10 ou plus récent. Fonctionne sous Windows, macOS, Linux. Le détecteur de visage (`assets/face_detection_yunet_2023mar.onnx`, licence MIT) est fourni ; sans lui, le banc tourne mais le masque de peau devient approximatif.
 
-Formats lus : TIFF et PNG en 8 et 16 bits, JPEG, PSD aplati (avec psd-tools, en 8 bits). Pas de RAW : exporter un TIFF 16 bits.
+Formats lus : TIFF et PNG en 8 et 16 bits, JPEG, PSD aplati (avec psd-tools, en 8 bits), TIFF CMJN (converti en sRGB pour l'analyse, taux d'encrage total relevé au passage). Pas de RAW : exporter un TIFF 16 bits.
 
-## 2. Les trois scripts
+Les commandes ci-dessous se lancent depuis le dossier du skill ; ailleurs, donner le chemin complet du script.
+
+## 2. Les scripts
 
 ```
 # une image, avec son original quand il existe (même cadrage)
@@ -34,19 +36,22 @@ python scripts/controle_serie.py dossier --genre packshot --reference vue_valide
 # repères personnels, à partir d'images validées
 python scripts/etalonner.py finals_valides --avant originaux --genre beaute --sortie reperes_beaute.json
 python scripts/controle_retouche.py final.tif --avant original.tif --reperes reperes_beaute.json
+
+# relevé chiffré d'un rendu de référence (visuels d'une maison, campagne validée)
+python scripts/relever_rendu.py visuels_reference --genre montre --masques masques --sortie releve_maison
 ```
 
 Options de `controle_retouche.py` :
 
 | Option | Effet |
 |---|---|
-| `--avant` | original au même cadrage : active toutes les mesures « conservé par la retouche », la carte des différences et la détection de déformation |
+| `--avant` | original au même cadrage (pour un empilement ou un composite : l'assemblage aplati avant retouche) : active toutes les mesures « conservé par la retouche », la carte des différences et la détection de déformation |
 | `--genre` | `beaute`, `portrait`, `mode`, `bijou`, `montre`, `packshot`, `general`, ou `auto` (visage détecté → portrait, fond uni → packshot) |
 | `--masque nom=fichier` | zone à mesurer à part (blanc = zone). Répétable. Voir § 7 |
 | `--tuiles` | `12` par défaut ; un nombre, `toutes`, ou une liste `C4,D4` |
 | `--zoom 2` | tuiles à 200 %, chaque cellule coupée en quatre (a, b, c, d) |
 | `--taille-tuile` | côté d'une cellule, 768 px par défaut |
-| `--symetrie` | symétrie, inclinaison, centrage et marges du sujet sur fond uni |
+| `--symetrie` | symétrie, inclinaison, centrage et marges du sujet sur fond uni. La symétrie et l'inclinaison ne valent que pour un objet de face ; de trois quarts, lire seulement centrage et marges |
 | `--largeur-visage` | à donner si le visage n'est pas détecté ou mal mesuré |
 | `--reperes` | fichier de repères personnels |
 | `--sans-vues` | mesures seules, pour un lot |
@@ -102,12 +107,13 @@ Une alerte est une piste. Elle ne devient un défaut qu'une fois vue.
 |---|---|---|
 | PROFIL_ABSENT | pas de profil incorporé | aucun |
 | HORS_GAMUT_SRGB | des couleurs sortent du sRGB | normal sur un maître en espace large |
+| ENCRAGE | taux d'encrage total d'un fichier CMJN | à comparer à la fiche du support ; le banc ne connaît pas sa limite |
 | BLANC_BRULE, CANAL_BRULE | hautes lumières ou canal au maximum, hors fond | spéculaires de métal et de pierre ; fond clair mal détecté |
 | NOIR_BOUCHE | noirs à zéro sur le sujet | fond noir mal détecté, parti pris graphique |
 | NOIRS_DECOLLES, BLANCS_ETEINTS | pas de vrai noir, pas de vrai blanc | rendu mat, low-key : simple information |
 | DOMINANTE_NEUTRES | les quasi-neutres ont une couleur | décor chaud ou froid ; étalonnage voulu (information hors produit) |
 | DOMINANTE_CROISEE | ombres et hautes lumières tirent en sens opposés | virage partiel voulu |
-| FOND_TEINTE, FOND_INEGAL, FOND_BLANC_PAS_PUR | fond pas neutre, pas uni, pas à 255 | dégradé de fond voulu, blanc cassé voulu |
+| FOND_TEINTE, FOND_INEGAL, FOND_BLANC_PAS_PUR | fond pas neutre, pas uni, pas à 255 (alerte sur un produit, information ailleurs) | dégradé de fond voulu, blanc cassé voulu |
 | BANDING | marches de 2 niveaux et plus | aplats graphiques voisins |
 | DEGRADE_SANS_GRAIN | dégradé lisse, marches de 1 niveau : risque, pas défaut | image de synthèse, fond numérique |
 | HISTOGRAMME_PEIGNE | tonalité étirée en 8 bits | image très peu nuancée |
@@ -145,7 +151,7 @@ Le nom décide du contrôle appliqué :
 
 Les repères par défaut sont raisonnables, pas justes. `etalonner.py` mesure un dossier d'images que Charles a validées, avec leurs originaux quand ils existent, et fixe chaque borne à la limite de ce qu'il valide d'habitude. Un fichier par type d'image. Il en faut au moins huit, vingt à trente pour des bornes stables.
 
-Le même relevé sert à chiffrer un rendu de référence : un dossier de visuels officiels d'une maison donne ses valeurs de fond, de neutralité, de marges, d'inclinaison.
+Pour chiffrer un rendu à atteindre plutôt que des seuils de défaut, c'est `relever_rendu.py` : un dossier de visuels officiels d'une maison, tous du même type, donne la médiane et l'étendue de ses valeurs de fond, de points noir et blanc, de neutres, de marges et d'inclinaison, et, avec un masque par zone nommé `<image>.<zone>.png`, celles du métal, de l'or ou du cadran. Une étendue étroite signale une constante de la maison ; une étendue large, une variable à ne pas copier.
 
 ## 9. Ce qui a été vérifié, ce qui ne l'a pas été
 
@@ -158,13 +164,17 @@ Vérifié le 15/11/2026, sur des photos libres de droits et des défauts fabriqu
 | Accentuation brutale | détecté : texture gonflée, halos |
 | Visage rougi sans le cou | détecté : écart visage / corps creusé par la retouche |
 | Ciel postérisé (marches de 3 niveaux) | détecté et localisé |
-| Packshot de synthèse : métal bleuté, fond teinté, ombre postérisée, 45 points | métal, fond et paliers détectés ; 30 points retrouvés sur 45 |
+| Packshot de synthèse : métal bleuté, fond blanc cassé et teinté, ombre postérisée, 45 points, pas de profil | tout détecté ; 43 points retrouvés sur 45, avec 9 candidats en trop |
 | Modelé de la peau atténué de moitié, pores gardés | mesuré (64 % conservé), sous le seuil d'alerte par défaut : pas d'alerte |
 | Image très grainée, non retouchée | 5 candidats poussière (4 487 avant correction du détecteur) |
 | Portrait non retouché | aucune alerte majeure ni mineure |
 
-Aussi vérifié : lecture d'un TIFF 16 bits, d'un PNG détouré, d'un TIFF CMJN et d'un fichier de 45 Mpx ; fichiers en Adobe RGB et en ProPhoto (mêmes mesures de couleur que la version sRGB de la même image, couleurs hors sRGB signalées) ; cohérence d'une série de quatre vues dont deux dérivées (les deux retrouvées) ; étalonnage sur un lot simulé de neuf paires.
+Aussi vérifié : lecture d'un TIFF 16 bits, d'un PNG détouré, d'un TIFF CMJN et d'un fichier de 45 Mpx ; fichiers en Adobe RGB et en ProPhoto (mêmes mesures de couleur que la version sRGB de la même image, couleurs hors sRGB signalées) ; cohérence d'une série de quatre vues dont deux dérivées (les deux retrouvées) ; étalonnage sur un lot simulé de neuf paires ; relevé de rendu sur quatre vues avec masque de métal.
 
-Essai de l'agent critique (15/11/2026) : sur un portrait où quatre défauts avaient été plantés sans le lui dire (peau floutée, visage rosi seul, mâchoire déplacée de 22 px, ciel postérisé), il a rendu « À REFAIRE », retrouvé les quatre avec leur zone et leur preuve, et relevé deux défauts non prévus (raccord net du flou dans les cheveux, lissage débordant sur les mèches). Il a aussi signalé six faiblesses du banc et de ses instructions, corrigées depuis. Un seul essai, sur une image fabriquée : ce n'est pas une preuve qu'il ne laisse rien passer.
+Essai de l'agent critique (15/11/2026) : sur un portrait où quatre défauts avaient été plantés sans le lui dire (peau floutée, visage rosi seul, mâchoire déplacée de 22 px, ciel postérisé), il a rendu « À REFAIRE », retrouvé les quatre avec leur zone et leur preuve, et relevé deux défauts non prévus (raccord net du flou dans les cheveux, lissage débordant sur les mèches). Il a aussi signalé six faiblesses du banc et de ses instructions, corrigées depuis.
+
+Essais du skill complet (même jour), par un modèle qui ne connaissait que le dossier du skill : contrôle du packshot de synthèse (verdict « À REPRENDRE », les cinq défauts plantés retrouvés, les 45 points recomptés un par un alors que le banc n'en cerclait alors que 30 ; corrigé depuis) et plan de retouche d'une bague pour la presse (seize ambiguïtés du skill relevées, corrigées depuis).
+
+Trois essais, sur des images fabriquées : ce n'est pas une preuve que le système ne laisse rien passer.
 
 Pas vérifié : aucune vraie retouche de Charles, aucun vrai fichier de bijou ou de montre en haute définition, aucun PSD, aucun TIFF 16 bits sorti de Photoshop ou de Capture One, aucune exécution sous Windows. Les seuils n'ont été confrontés à aucune image validée par lui. Tant que l'étalonnage n'est pas fait, lire les chiffres comme des ordres de grandeur.

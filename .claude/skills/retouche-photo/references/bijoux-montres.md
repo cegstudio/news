@@ -25,7 +25,7 @@ Deux conséquences pratiques.
 
 La référence n'est pas une photo, c'est un objet idéal contrôlé au pixel. Une image photographique qui vise ce niveau se traite comme une illustration sur base photographique : chaque surface est détourée, nettoyée, et son dégradé reconstruit. On ne « corrige » pas une montre, on la redessine avec sa propre lumière.
 
-Le rendu d'une maison se relève, il ne se devine pas. Quand Charles vise une maison précise : réunir dix à vingt visuels officiels du même type (packshot de face, trois quarts, porté), les passer au banc avec des masques métal, cadran et fond, et en tirer un profil chiffré (neutralité et étendue tonale du métal, densité et teinte du fond, nature de l'ombre, marges, inclinaison). `etalonner.py` fait ce relevé sur un dossier. Sans ce relevé, parler du « rendu Cartier » est une impression, pas une cible.
+Le rendu d'une maison se relève, il ne se devine pas. Quand Charles vise une maison précise : réunir dix à vingt visuels officiels du même type (packshot de face, trois quarts, porté), les passer au banc avec des masques métal, cadran et fond, et en tirer un profil chiffré (neutralité et étendue tonale du métal, densité et teinte du fond, nature de l'ombre, marges, inclinaison). `scripts/relever_rendu.py` fait ce relevé sur un dossier, avec un masque par zone et par image. Sans ce relevé, parler du « rendu Cartier » est une impression, pas une cible.
 
 Ce qui est commun au haut de gamme [analyse] :
 - Chaque surface métallique porte un dégradé propre, du noir franc au blanc, sans accident. Un photographe joaillier le formule ainsi : un blanc et un noir francs dans chaque image.
@@ -51,14 +51,14 @@ Ce que la retouche ne rattrape pas : un métal éclairé sans dégradé (il n'y 
 
 ## 3. Montre : le flux de retouche
 
-**0. Assemblage.** Empilement dans un logiciel dédié (Helicon est jugé plus précis que Photoshop par un formateur de référence), recouvrements corrigés à la main. Puis composition des expositions, une par élément, par masques.
+**0. Assemblage.** Empilement dans un logiciel dédié (Helicon est jugé plus précis que Photoshop par un formateur de référence), recouvrements corrigés à la main depuis le plan source. Dans Helicon, la méthode B (carte de profondeur) convient aux surfaces lisses ; la méthode C (pyramide) passe mieux les recouvrements et les arêtes croisées, au prix d'un contraste et de brillances accentués : la réserver, par masque, aux zones où B échoue. Puis composition des expositions séparées, une par calque. L'empilement redimensionne les plans (la mise au point change le grandissement) : toute exposition séparée se recale sur l'image empilée, en mode Différence, avant d'être masquée, sinon arêtes et griffes se dédoublent. Synchroniser le nettoyage des poussières de capteur sur tous les plans avant l'empilement, qui les étire en traînées. La copie aplatie de l'assemblage sert d'« avant » au banc.
 
 **1. Tracés.** Plume, pièce par pièce : boîte, lunette, cornes, couronne, poussoirs, verre, cadran, chaque index, chaque aiguille, bracelet. Les commentateurs d'un time-lapse de retouche d'une Rolex y comptent au moins une centaine de tracés. Les tracés sont enregistrés ; tout le reste se fait à l'intérieur d'eux. C'est ce qui garantit des arêtes nettes sans halo et des corrections qui ne débordent pas. Une sélection automatique sert d'ébauche, jamais de contour final sur un produit de luxe. [analyse]
 
 **2. Nettoyage.** Poussières, fibres, micro-rayures, traces de doigt, sous la courbe solarisée, à 200 %. Sur un poli, correcteur ; sur un brossé, tampon aligné sur le sens du brossage, sinon la trace se voit. La vue `09_poussieres` du banc cercle les candidats.
 
 **3. Métal.** [analyse]
-- Poli miroir : ce qu'on voit est le reflet de l'environnement. On reconstruit un dégradé propre dans le tracé (outil dégradé ou pinceau large sur calque masqué), avec des transitions franches là où deux facettes se rencontrent et des noirs posés. Un métal poli sans noir est gris ; le banc signale une étendue tonale insuffisante (METAL_PLAT).
+- Poli miroir : ce qu'on voit est le reflet de l'environnement. On reconstruit un dégradé propre dans le tracé (outil dégradé ou pinceau large sur calque masqué), avec des transitions franches là où deux facettes se rencontrent et des noirs posés. Un métal poli sans noir est gris ; le banc signale une étendue tonale insuffisante (METAL_PLAT). Repères de départ, faute de relevé sur des visuels de référence : noirs vers L* 8 à 15, clairs vers L* 92 à 96, blanc pur réservé aux spéculaires.
 - Brossé, satiné : la texture directionnelle est le fini. On refait le dégradé de fond sous la texture (couche basse d'une séparation de fréquences), on garde ou on régénère la texture au-dessus (bruit étiré dans le sens du brossage : droit sur un maillon, circulaire sur une lunette).
 - Chanfreins et arêtes : un filet clair continu, de largeur constante.
 - Bracelet : chaque maillon reçoit le même traitement. Régularité, sans copier-coller identique qui se repère.
@@ -77,6 +77,16 @@ Ce que la retouche ne rattrape pas : un métal éclairé sans dégradé (il n'y 
 **9. Finition.** Les formateurs décrivent la même fin de chaîne : tampon, dodge and burn, lissage des transitions du chrome, dégradé, accentuation, avec un niveau de finition réglé sur la taille finale. Accentuation par pièce, jamais globale : un halo sur une arête de métal ruine le travail des tracés.
 
 ## 4. Joaillerie : pierres, sertis, perles, chaînes
+
+**Flux d'une bague ou d'un bijou**, calqué sur celui de la montre [analyse] :
+1. Assemblage : empilement, expositions de pierre recalées, copie aplatie pour le banc.
+2. Tracés : corps du bijou pan par pan, chaton, chaque griffe, chaque pierre, ombre, fond. Pierres et métal dans des tracés distincts.
+3. Nettoyage sous courbe solarisée, à 200 %. Ce qui est posé sur une pierre part ; ses inclusions restent, sauf demande écrite.
+4. Forme : griffes égales et rondes, anneau régularisé sur une ellipse, pierre droite dans son serti, sans toucher aux proportions.
+5. Métal : dégradé reconstruit surface par surface, noirs posés, filet clair constant sur les arêtes.
+6. Pierres : contraste des facettes dans le tracé, à partir de la meilleure exposition ; jamais de lissage.
+7. Couleur : métal blanc neutre, or constant ; correction masquée au métal pour ne pas éteindre le feu des pierres.
+8. Ombre, reflet, fond ; puis étalonnage, grain, netteté par pièce, contrôle, export.
 
 - **Tracés séparés** pour les diamants, les pierres de couleur et le corps du bijou (pratique décrite par un photographe joaillier). Ils ne reçoivent pas les mêmes réglages.
 - **Une prise par reflet**, puis empilement : une photographe citée compte six heures de prise de vue et huit heures de retouche pour une bague.
@@ -121,9 +131,14 @@ De pratique [analyse] :
 ## 7. Ce que le banc mesure sur un bijou
 
 ```
-python scripts/controle_retouche.py montre.tif --genre montre --symetrie \
-    --masque metal=m_boite.png --masque cadran=m_cadran.png --zoom 2
+python scripts/controle_retouche.py montre.tif --avant assemblage.tif --genre montre --symetrie --zoom 2 \
+    --masque metal=m_boite.png --masque cadran=m_cadran.png
+python scripts/controle_retouche.py bague.tif --avant assemblage.tif --genre bijou --zoom 2 \
+    --masque or_blanc=m_metal.png --masque pierre=m_pierre.png --masque fond=m_fond.png
+python scripts/controle_retouche.py bague.tif --avant assemblage.tif --tuiles-seules --tuiles C3,C4,D3,D4 --zoom 2
 ```
+
+Le nom du masque décide du contrôle : `metal`, `acier`, `platine`, `or_blanc` pour un métal blanc (neutralité exigée), `or_jaune`, `or_rose` pour un or (teinte relevée). `--symetrie` n'a de sens que pour un objet vu de face ; de trois quarts, seuls le centrage et les marges restent lisibles.
 
 - Poussières : candidats cerclés, par cellule.
 - Neutralité du métal et du fond ; étendue tonale du métal ; spéculaires brûlés par zone.

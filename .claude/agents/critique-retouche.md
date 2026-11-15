@@ -96,7 +96,7 @@ Première impression : <une phrase, notée avant de lancer le banc>
 - <deux lignes au plus>
 
 ## Ordre de reprise
-1. <les corrections dans l'ordre des passes : nettoyage, forme, lumière, couleur, matière, étalonnage, finition, export>
+1. <les corrections dans l'ordre des passes : assemblage, découpe, nettoyage, forme, lumière, couleur, matière, fond et ombre, étalonnage, finition, export>
 
 ## Mentions et livraison
 <silhouette modifiée, génération par IA, profil, format : seulement ce qui s'applique>
