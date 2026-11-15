@@ -147,6 +147,20 @@ Le même relevé sert à chiffrer un rendu de référence : un dossier de visuel
 
 ## 9. Ce qui a été vérifié, ce qui ne l'a pas été
 
-Vérifié le 15/11/2026, sur des photos libres de droits et des défauts fabriqués exprès à partir d'un portrait : peau floutée (détectée, 5 % de texture conservée), fluidité de 25 px (détectée et localisée), accentuation excessive (détectée), visage rougi seul (détecté), ciel postérisé (détecté), image grainée (4 487 fausses poussières ramenées à 5 après correction). Lecture des TIFF 16 bits, d'un PNG détouré, d'un fichier de 45 Mpx ; cohérence de série sur quatre vues dont deux dérivées.
+Vérifié le 15/11/2026, sur des photos libres de droits et des défauts fabriqués exprès.
 
-Pas vérifié : aucune vraie retouche de Charles, aucun vrai fichier de bijou ou de montre en haute définition, aucun fichier en Adobe RGB ou ProPhoto, aucun PSD. Les seuils n'ont été confrontés à aucune image validée par lui. Tant que l'étalonnage n'est pas fait, lire les chiffres comme des ordres de grandeur.
+| Défaut fabriqué | Résultat |
+|---|---|
+| Peau floutée (portrait de 9 Mpx) | détecté : 5 % de texture fine conservée, grain incohérent |
+| Fluidité de 25 px sur la mâchoire | détecté et localisé (cellules A3, B3) |
+| Accentuation brutale | détecté : texture gonflée, halos |
+| Visage rougi sans le cou | détecté : écart visage / corps creusé par la retouche |
+| Ciel postérisé (marches de 3 niveaux) | détecté et localisé |
+| Packshot de synthèse : métal bleuté, fond teinté, ombre postérisée, 45 points | métal, fond et paliers détectés ; 30 points retrouvés sur 45 |
+| Modelé de la peau atténué de moitié, pores gardés | mesuré (64 % conservé), sous le seuil d'alerte par défaut : pas d'alerte |
+| Image très grainée, non retouchée | 5 candidats poussière (4 487 avant correction du détecteur) |
+| Portrait non retouché | aucune alerte majeure ni mineure |
+
+Aussi vérifié : lecture d'un TIFF 16 bits, d'un PNG détouré et d'un fichier de 45 Mpx ; cohérence d'une série de quatre vues dont deux dérivées (les deux retrouvées) ; étalonnage sur un lot simulé de neuf paires.
+
+Pas vérifié : aucune vraie retouche de Charles, aucun vrai fichier de bijou ou de montre en haute définition, aucun fichier en Adobe RGB ou ProPhoto, aucun PSD, aucune exécution sous Windows. Les seuils n'ont été confrontés à aucune image validée par lui. Tant que l'étalonnage n'est pas fait, lire les chiffres comme des ordres de grandeur.

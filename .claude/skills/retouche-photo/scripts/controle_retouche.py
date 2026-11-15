@@ -1431,7 +1431,15 @@ def dessiner_grille(rgb8: np.ndarray, grille: Grille, marquer: set[str] | None =
     return np.asarray(im)
 
 
+def _sans_accents(texte: str) -> str:
+    """La police intégrée à Pillow n'a pas tous les accents : une étiquette lisible vaut mieux qu'un carré vide."""
+    import unicodedata
+    texte = texte.replace("Δ", "d").replace("×", "x")
+    return "".join(c for c in unicodedata.normalize("NFKD", texte) if not unicodedata.combining(c))
+
+
 def etiqueter(rgb8: np.ndarray, texte: str) -> np.ndarray:
+    texte = _sans_accents(texte)
     im = Image.fromarray(rgb8)
     d = ImageDraw.Draw(im, "RGBA")
     pol = _police(16)
