@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: controle-packshot-defauts-plantes
+expected_outcome: |
+  Le banc de contrôle est lancé sur packshot_essai.png avec le masque du métal, puis l'image est relue à 100 %.
+  Le compte rendu donne un verdict « À REPRENDRE » (pas « livrable ») et relève, preuve et zone à l'appui, les
+  défauts plantés dans l'image : métal blanc qui tire vers le bleu, fond blanc teinté et inégal (pas à 255),
+  dégradé de l'ombre en marches d'escalier, poussières sur le fond et le métal, profil colorimétrique absent.
+  Chaque défaut a une correction concrète. Aucun compliment de remplissage.
+context:
+  scaffold_script: place-files.sh

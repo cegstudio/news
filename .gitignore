@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*_controle/
+*_serie/
+.DS_Store

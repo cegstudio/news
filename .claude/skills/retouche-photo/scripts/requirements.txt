@@ -1,0 +1,6 @@
+numpy
+pillow
+opencv-python-headless
+# facultatif : TIFF 16 bits compressés, PSD
+tifffile
+psd-tools

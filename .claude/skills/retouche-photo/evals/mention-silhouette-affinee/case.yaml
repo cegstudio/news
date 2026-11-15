@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: mention-silhouette-affinee
+expected_outcome: |
+  La réponse dit que la mention « Photographie retouchée » s'applique (photographie commerciale d'un mannequin
+  dont la silhouette a été affinée), cite l'article L2133-2 du Code de la santé publique et le décret de 2017,
+  précise que l'obligation pèse sur l'annonceur et recommande à Charles de signaler la modification par écrit à
+  l'agence à la livraison. Elle donne la sanction, rappelle que ce n'est pas un avis juridique, et source ses
+  affirmations. Elle ne confond pas ce texte avec celui sur les influenceurs.

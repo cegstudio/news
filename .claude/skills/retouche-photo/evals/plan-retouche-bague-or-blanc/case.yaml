@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: plan-retouche-bague-or-blanc
+expected_outcome: |
+  Un plan de retouche court, en français, tutoiement, sans rappel des bases : passes dans l'ordre (assemblage,
+  tracés par pièce, nettoyage, métal, pierre, ombre et fond, couleur, finition, contrôle, export presse), avec
+  pour chaque passe l'outil, un réglage de départ et un critère d'arrêt. Il dit que le « rendu Cartier » ne se
+  devine pas et demande ou propose de relever des visuels de référence. Il exclut toute génération par IA sur le
+  bijou, exige un métal blanc neutre, traite la pierre par contraste et non par lissage, donne la commande du banc
+  de contrôle, et précise que l'export presse dépend de la fiche technique du titre.
